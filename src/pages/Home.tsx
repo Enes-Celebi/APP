@@ -1,5 +1,5 @@
 "use client";
-import { trpc } from "../lib/trpc";
+import { trpc } from "../core/api/trpc";
 
 export default function Home() {
   const me = trpc?.identity?.me?.useQuery
@@ -29,7 +29,9 @@ export default function Home() {
   return (
     <div className="p-6 space-y-3">
       <h1 className="text-xl font-semibold">Welcome</h1>
-      <p>Signed in as: <b>{email}</b></p>
+      <p>
+        Signed in as: <b>{email}</b>
+      </p>
 
       {!team ? (
         <p>Creating your team… refresh in a few seconds.</p>
@@ -37,7 +39,9 @@ export default function Home() {
         <>
           <h2 className="text-lg font-semibold">{team.name}</h2>
           <p>Budget: ${(team.budgetCents / 100).toLocaleString()}</p>
-          <h3 className="font-semibold mt-2">Players ({team.players.length})</h3>
+          <h3 className="font-semibold mt-2">
+            Players ({team.players.length})
+          </h3>
           <ul className="list-disc pl-5">
             {team.players.map((p: any) => (
               <li key={p.id}>
@@ -48,7 +52,6 @@ export default function Home() {
         </>
       )}
 
-      {/* Optional second logout on the page (GET) */}
       <a
         href="http://localhost:4000/auth/logout"
         className="inline-block mt-2 px-3 py-1 rounded bg-gray-200 hover:bg-gray-300"
