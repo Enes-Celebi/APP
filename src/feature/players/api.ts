@@ -32,18 +32,14 @@ export function usePlayersInfinite(opts?: {
   position?: "GK" | "DF" | "MD" | "FW" | "ALL";
   forSale?: boolean;
   teamScope?: "all" | "mine";
+  teamId?: string; // <-- NEW
 }) {
-  const { limit = 24, position = "ALL", forSale, teamScope = "all" } = opts ?? {};
+  const { limit = 24, position = "ALL", forSale, teamScope = "all", teamId } = opts ?? {};
 
   const q = trpc.player.page.useInfiniteQuery(
-    { limit, position, forSale, teamScope },
+    { limit, position, forSale, teamScope, teamId },
     {
       getNextPageParam: (lastPage: PlayerPage) => {
-        console.log("getNextPageParam:", {
-          nextCursor: lastPage?.nextCursor,
-          pageItems: lastPage?.items?.length,
-          pageTotal: lastPage?.total,
-        });
         return lastPage?.nextCursor ?? undefined;
       },
       keepPreviousData: true,
@@ -55,16 +51,6 @@ export function usePlayersInfinite(opts?: {
   const pages: PlayerPage[] = (q.data?.pages as PlayerPage[] | undefined) ?? [];
   const total: number = pages[0]?.total ?? 0;
   const players: Player[] = pages.flatMap((p) => p.items);
-
-  console.log("usePlayersInfinite state:", {
-    pagesCount: pages.length,
-    total,
-    playersLoaded: players.length,
-    hasNextPage: q.hasNextPage,
-    isFetchingNextPage: q.isFetchingNextPage,
-    isLoading: q.isLoading,
-    lastPageCursor: pages[pages.length - 1]?.nextCursor,
-  });
 
   return { ...q, players, total };
 }
