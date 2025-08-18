@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import FormModal from "../../presentation/components/FormModal";
 
 export function ListPriceModal({
@@ -12,11 +12,15 @@ export function ListPriceModal({
   title: string;
   defaultPriceCents?: number;
   onClose: () => void;
-  onSave: (priceCents: number) => void;
+  onSave: (priceCents: number) => void | Promise<void>;
 }) {
   const [dollars, setDollars] = useState(
     defaultPriceCents ? String(defaultPriceCents / 100) : ""
   );
+
+  useEffect(() => {
+    setDollars(defaultPriceCents ? String(defaultPriceCents / 100) : "");
+  }, [defaultPriceCents, open]);
 
   return (
     <FormModal
@@ -28,9 +32,12 @@ export function ListPriceModal({
       inputAllowed
       primaryText="Save"
       secondaryText="Cancel"
-      onPrimary={(v) => {
+      onPrimary={async (v) => {
         const cents = Math.round(Number((v || "").replace(/[, ]/g, "")) * 100);
-        if (cents > 0) onSave(cents);
+        if (cents > 0) {
+          await Promise.resolve(onSave(cents)); 
+          onClose(); 
+        }
       }}
       onSecondary={onClose}
       onClose={onClose}

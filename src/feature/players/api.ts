@@ -1,15 +1,10 @@
-// web/feature/players/api.ts
 import { trpc } from "../../core/api/trpc";
 import type { Player } from "./types";
 
 type PlayerPage = { items: Player[]; nextCursor: number | null; total: number };
 
 export function useMe() {
-  return trpc.identity.me.useQuery();
-}
-
-export function useAllPlayers() {
-  return trpc.player.all.useQuery() as unknown as { data?: Player[]; isLoading: boolean; isError: boolean };
+  return trpc.identity.me.useQuery(undefined, { retry: false });
 }
 
 export function usePlayerMutations() {
@@ -17,7 +12,7 @@ export function usePlayerMutations() {
   const invalidate = () => {
     utils.player.all?.invalidate?.();
     utils.player.page?.invalidate?.();
-    utils.identity.me?.invalidate?.();
+    utils.identity.me?.invalidate?.(); 
   };
 
   const listForSale = trpc.player.listForSale.useMutation({ onSuccess: invalidate });
@@ -32,25 +27,25 @@ export function usePlayersInfinite(opts?: {
   position?: "GK" | "DF" | "MD" | "FW" | "ALL";
   forSale?: boolean;
   teamScope?: "all" | "mine";
-  teamId?: string; // <-- NEW
+  teamId?: string;
+  q?: string;
+  sort?: "priceAsc" | "priceDesc";
 }) {
-  const { limit = 24, position = "ALL", forSale, teamScope = "all", teamId } = opts ?? {};
+  const { limit = 24, position = "ALL", forSale, teamScope = "all", teamId, q, sort } = opts ?? {};
 
-  const q = trpc.player.page.useInfiniteQuery(
-    { limit, position, forSale, teamScope, teamId },
+  const qry = trpc.player.page.useInfiniteQuery(
+    { limit, position, forSale, teamScope, teamId, q, sort },
     {
-      getNextPageParam: (lastPage: PlayerPage) => {
-        return lastPage?.nextCursor ?? undefined;
-      },
+      getNextPageParam: (lastPage: PlayerPage) => lastPage?.nextCursor ?? undefined,
       keepPreviousData: true,
       refetchOnWindowFocus: false,
       staleTime: 5 * 60 * 1000,
     }
   );
 
-  const pages: PlayerPage[] = (q.data?.pages as PlayerPage[] | undefined) ?? [];
+  const pages: PlayerPage[] = (qry.data?.pages as PlayerPage[] | undefined) ?? [];
   const total: number = pages[0]?.total ?? 0;
   const players: Player[] = pages.flatMap((p) => p.items);
 
-  return { ...q, players, total };
+  return { ...qry, players, total };
 }

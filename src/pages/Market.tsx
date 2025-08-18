@@ -1,3 +1,16 @@
+import { PlayersView } from "../feature/players/PlayersView";
+
 export default function Market() {
-  return <div className="p-2">Market page</div>;
+  return (
+    <PlayersView
+      title="Market"
+      limit={12}
+      teamScope="all"
+      forSale
+      enableSearch
+      enableTeamFilter
+      enablePositionFilter
+      enableSortByPrice
+    />
+  );
 }
