@@ -3,7 +3,6 @@ import { trpc } from "../../../core/api/trpc";
 import FormModal from "../../../presentation/components/FormModal";
 import { COLORS } from "../../../core/constants/palette";
 
-/** helpers */
 const sanitizeUsername = (v: string) => v.replace(/[<>&"'`]/g, "");
 const validateUsername = (v: string) => {
   if (v.trim().length < 3) return "Must be at least 3 characters";
@@ -22,7 +21,6 @@ const validateTeam = (v: string) => {
 
 type Step = "HIDDEN" | "USERNAME" | "TEAM_NAME" | "CREATING" | "BUDGET";
 
-/** simple budget animation */
 function useCounter(to: number, durationMs = 1800) {
   const [value, setValue] = useState(0);
   useEffect(() => {
@@ -30,7 +28,7 @@ function useCounter(to: number, durationMs = 1800) {
     const start = performance.now();
     const tick = (now: number) => {
       const t = Math.min(1, (now - start) / durationMs);
-      setValue(Math.floor(to * (1 - Math.pow(1 - t, 3)))); // ease-out cubic
+      setValue(Math.floor(to * (1 - Math.pow(1 - t, 3))));
       if (t < 1) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -40,19 +38,16 @@ function useCounter(to: number, durationMs = 1800) {
 }
 
 export default function OnboardingGate() {
-  // queries & mutations
   const utils = trpc.useUtils();
   const me = trpc.identity.me.useQuery(undefined, { retry: false, refetchOnWindowFocus: false });
   const setUsername = trpc.identity.setUsername.useMutation();
   const requestCreate = trpc.team.requestCreate.useMutation();
 
-  // poll job status only when needed
   const jobStatus = trpc.team.jobStatus.useQuery(undefined, {
     enabled: false,
     refetchInterval: 1000,
   });
 
-  /** derive initial step from server */
   const initialStep: Step = useMemo(() => {
     const u = me.data?.user;
     const team = me.data?.team;
@@ -69,25 +64,20 @@ export default function OnboardingGate() {
 
   useEffect(() => setStep(initialStep), [initialStep]);
 
-  // ----- STEP: USERNAME -----
   const handleSetUsername = async (username: string) => {
     await setUsername.mutateAsync({ username });
     await utils.identity.me.invalidate();
     setStep("TEAM_NAME");
   };
 
-  // ----- STEP: TEAM NAME -----
   const handleRequestTeam = async (name: string) => {
     setTeamNameDraft(name);
     await requestCreate.mutateAsync({ teamName: name });
-    // start polling job
-    jobStatus.refetch(); // first hit
+    jobStatus.refetch(); 
     jobStatus.refetchInterval = 1000 as any;
     setStep("CREATING");
   };
 
-  // ----- STEP: CREATING (progress simulation + polling) -----
-  // Fake progress while we poll job status
   const [progress, setProgress] = useState(5);
   const doneOnce = useRef(false);
 
@@ -113,14 +103,11 @@ export default function OnboardingGate() {
       const s = r.data?.status;
       if ((s === "done" || s === "failed") && !doneOnce.current) {
         doneOnce.current = true;
-        // finalize
         await utils.identity.me.invalidate();
         if (s === "done") {
           setProgress(100);
-          // small pause then budget step
           setTimeout(() => setStep("BUDGET"), 500);
         } else {
-          // failed case: return to TEAM_NAME
           setStep("TEAM_NAME");
         }
       }
@@ -129,20 +116,20 @@ export default function OnboardingGate() {
     return () => clearInterval(unsub);
   }, [step, jobStatus, utils]);
 
-  // ----- STEP: BUDGET -----
   const budgetCents = me.data?.team?.budgetCents ?? 500000000; // fallback
   const target = Math.floor(budgetCents / 100);
   const counter = useCounter(target, 1600);
 
   const finish = async () => {
-    await utils.identity.me.invalidate();
-    setStep("HIDDEN");
+    try {
+      await utils.identity.me.invalidate();
+    } finally {
+      window.location.reload();
+    }
   };
 
-  // Render nothing if not gating
   if (step === "HIDDEN") return null;
 
-  // USERNAME
   if (step === "USERNAME") {
     return (
       <FormModal
@@ -160,7 +147,6 @@ export default function OnboardingGate() {
     );
   }
 
-  // TEAM NAME
   if (step === "TEAM_NAME") {
     return (
       <FormModal
@@ -178,7 +164,6 @@ export default function OnboardingGate() {
     );
   }
 
-  // CREATING
   if (step === "CREATING") {
     return (
       <FormModal
@@ -189,7 +174,9 @@ export default function OnboardingGate() {
         onPrimary={() => {}}
       >
         <div className="flex flex-col items-center gap-4">
-          <div className="text-gray-700">Populating players for <b>{teamNameDraft}</b>…</div>
+          <div className="text-gray-700">
+            Populating players for <b>{teamNameDraft}</b>…
+          </div>
           <div className="w-full max-w-lg h-3 rounded-full bg-gray-200 overflow-hidden">
             <div
               className="h-full"
@@ -207,14 +194,13 @@ export default function OnboardingGate() {
     );
   }
 
-  // BUDGET
   if (step === "BUDGET") {
     return (
       <FormModal
         open
         title="Starting Budget"
         primaryText="Start managing!"
-        onPrimary={finish}
+        onPrimary={finish}  
         inputAllowed={false}
       >
         <div className="flex flex-col items-center gap-4 py-2">
